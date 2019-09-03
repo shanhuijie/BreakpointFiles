@@ -6,47 +6,52 @@ $file = !empty($_FILES['file'])  ? $_FILES['file'] : '';
 
 if(!$post || !$file){
 
-	echo json_encode(['code' => 1001, 'msg' => 'error', 'data' => []]);exit;
+    echo json_encode(['code' => 1001, 'msg' => 'error', 'data' => []]);exit;
 }
-
 $uploadSliceFile = new uploadSliceFile($post['filename'], $post['page'], $post['pages'], $file['tmp_name']);
 
 $uploadSliceFile ->apiReturn();
 
+
+
+
 class uploadSliceFile{
 
-	private $filename;								// 文件名
+    private $filename;                              // 文件名
 
-	private $filepath = "../file/uploads/";			// 分片上传目录
+    private $filepath = "../file/uploads/";         // 分片上传目录
 
-	private $filespath = '../file/upload/';			// 文件上传目录
+    private $filespath = '../file/upload/';         // 文件上传目录
 
-	private $sliceNum;								// 分块数（第几页
+    private $sliceNum;                              // 分块数（第几页
 
-	private $tmpPath;								// 上传文件临时目录
+    private $tmpPath;                               // 上传文件临时目录
 
-	private $totalBlobNum;							// 总块数（总页数）
+    private $totalBlobNum;                          // 总块数（总页数）
 
-	public function __construct($filename, $sliceNum, $totalBlobNum, $tmpPath){
+    public function __construct($filename, $sliceNum, $totalBlobNum, $tmpPath){
 
-		$this ->filename = $filename;
+        $this ->filename = $filename;
+        
+        $this ->sliceNum = $sliceNum;
 
-		$this ->sliceNum = $sliceNum;
+        $this ->totalBlobNum = $totalBlobNum;
 
-		$this ->totalBlobNum = $totalBlobNum;
+        $this ->tmpPath = $tmpPath;
 
-		$this ->tmpPath = $tmpPath;
+        $this ->filepath .= md5($this ->filename);
 
-		$this ->filepath .= md5($this ->filename);
+        $this ->moveFile();
 
-		$this ->moveFile();
+        $this ->fileMerge();
+    }
 
-		$this ->fileMerge();
-	}
 
-	//API返回数据
+
+
+
+    //API返回数据
     public function apiReturn(){
- 
         if($this->sliceNum == $this->totalBlobNum - 1){
  
             if(file_exists($this->filespath.'/'. $this->filename)){
@@ -79,7 +84,7 @@ class uploadSliceFile{
  
     }
 
-	//移动文件
+    //移动文件
     private function moveFile(){
  
         $this->touchDir();
@@ -117,7 +122,7 @@ class uploadSliceFile{
             }
 
             $this->deleteFileBlob();
-    	}
+        }
     }
 
     //删除文件块
@@ -126,6 +131,7 @@ class uploadSliceFile{
         for($i = 0; $i < $this->totalBlobNum; $i++){
  
             unlink($this->filepath.'/'. $this->filename.'_'.$i);
+            @rmdir($this->filepath);
  
         }
  

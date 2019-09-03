@@ -41,19 +41,23 @@
 			,element = layui.element
 			,util = layui.util
 			,layer = layui.layer
-			,BYTES_PER_SLICE = 2<<15			//  切片大小
+			,BYTES_PER_SLICE = 2<<18			//  切片大小
 			,hasSendNum = 0					//  以发送数量
-			,totalSlices;					//  总切片数
-			console.log(BYTES_PER_SLICE)
+			,totalSlices					//  总切片数
+			,file,totalSize;
 		util.event('lay-active',{
 
 			begin: function() {
-				//  文件
-				var file = $('#file_demo')[0].files[0]
+					//  文件
+					file = $('#file_demo')[0].files[0]
+					if(file==undefined){
+						alert("文件为空")
+						window.location.reload()
+					}
 					// 文件的总字节数
-        			,totalSize = file.size
+        			totalSize = file.size
         			// 当前切片数
-        			,index = 0
+        		var index = 0
         			// 切片的开始和结束
         			,start,end
         			// 上传文件名
@@ -63,26 +67,40 @@
         		//  总切片数
         		totalSlices = Math.ceil(totalSize/BYTES_PER_SLICE);
 
-        		while(index < totalSlices){
-        			//  切片开始位置
-        			start = index * BYTES_PER_SLICE;
-        			//  切片结束位置
-        			end = start + BYTES_PER_SLICE
-        			//  切割文件
-        			var slice = file.slice(start,end);
+        		checkFile(fileName)
+        		
+        		//uploadSliceFile(index, fileName);
 
-        			uploadSliceFile(slice, index, fileName);
-
-        			index++;
-        		}
-
-				// console.log(file);
 			}
 		},'click')
 
-	function uploadSliceFile(slice, page, filename){
-		var Data = new FormData();
+	function checkFile(fileName){
+		$.ajax({
+			url: './checkFile.php'
+			,data: {"file":fileName}
+			,type: 'post'
+			,async: false
+        	,success: function(obj){
+        		var arr = JSON.parse(obj)
+        		if(arr.page>1){
+					uploadSliceFile(arr.page,fileName)
+				}else{
+					uploadSliceFile(arr.page,fileName)
+				}
+			}
+        	
+		})
+	}
 
+	function uploadSliceFile(page, filename){
+		//  切片开始位置
+		start = page * BYTES_PER_SLICE;
+		//  切片结束位置
+		end = start + BYTES_PER_SLICE
+		//  切割文件
+		var slice = file.slice(start,end);
+
+		var Data = new FormData();
 		Data.append('file', slice);
 		Data.append('page', page);
 		Data.append('filename', filename);
@@ -97,20 +115,18 @@
         	,contentType : false // 不要设置Content-Type请求头
         	,async: true
         	,success: function(obj){
-        		console.log(obj)
-        		if(obj.code == 1){
         			var progress = (((page + 1)/totalSlices) * 100).toFixed(2)
-        			// console.log(progress)
-        			element.progress('demo','100%')
-        		}else{
-        			var progress = (((page + 1)/totalSlices) * 100).toFixed(2)
-        			// console.log(progress)
-        			element.progress('demo',progress+'%')
-        		}
+
+        			element.progress('demo',obj.code == 1 ? '100%' : progress+'%');
+
+        			if(page + 1 < totalSlices){
+
+        				uploadSliceFile(++page, filename);
+        			}
+
         	}
         	,error: function(response){
         		// 失败时 重新上传
-        		 console.log(response)
         		 return false
         	}
 		})
